@@ -1,0 +1,6 @@
+{
+  "name": "السبع المثاني",
+  "description": "موسوعة رقمية معرفية للشخصيات الإسلامية وشبكات العلاقات العلمية والتاريخية والروحية والنسبية",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
