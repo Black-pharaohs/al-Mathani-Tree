@@ -46,6 +46,21 @@ import {
   SAB_MATHANI_TIERS_CONFIG,
   KNOT_COMPLETERS_CONFIG
 } from '../data/sabMathaniData';
+import {
+  getPersonClaimsAndEvidence,
+  ClaimVerificationItem
+} from '../data/evidenceClaimsData';
+import {
+  DETAILED_PLACES,
+  SEED_SHRINES,
+  SCHOLARLY_JOURNEYS,
+  SEED_HISTORICAL_ERAS,
+  PlaceWithDetails,
+  ShrineWithPerson,
+  ScholarlyJourney,
+  HistoricalEra
+} from '../data/placesShrinesData';
+import { getSupabaseClient } from './supabase';
 
 class KnowledgeRepository {
   private categories: Category[] = [...SEED_CATEGORIES];
@@ -53,7 +68,10 @@ class KnowledgeRepository {
   private schools: School[] = [...SEED_SCHOOLS];
   private tariqas: Tariqa[] = [...SEED_TARIQAS];
   private relationshipTypes: RelationshipType[] = [...SEED_RELATIONSHIP_TYPES];
-  private places: Place[] = [...SEED_PLACES];
+  private places: PlaceWithDetails[] = [...DETAILED_PLACES];
+  private shrines: ShrineWithPerson[] = [...SEED_SHRINES];
+  private scholarlyJourneys: ScholarlyJourney[] = [...SCHOLARLY_JOURNEYS];
+  private historicalEras: HistoricalEra[] = [...SEED_HISTORICAL_ERAS];
   private sources: Source[] = [...SEED_SOURCES];
   private books: Book[] = [...SEED_BOOKS];
   private persons: Person[] = [...SEED_PERSONS];
@@ -169,17 +187,57 @@ class KnowledgeRepository {
         };
       });
 
+    // Sab' Mathani Station Meta
+    let mathaniMeta: import('../core/types').MathaniMeta | null = null;
+    const tier = SAB_MATHANI_TIERS_CONFIG.find(t => t.memberIds.includes(person.id));
+    if (tier) {
+      const partnerPersons = this.persons
+        .filter(p => tier.memberIds.includes(p.id) && p.id !== person.id)
+        .map(p => ({ id: p.id, name: p.primary_name, slug: p.slug }));
+
+      mathaniMeta = {
+        isMathani: true,
+        tierNumber: tier.tierNumber,
+        tierTitle: tier.title,
+        tierShortTitle: tier.shortTitle,
+        tierRealm: tier.realm,
+        tierDuty: tier.duty,
+        tierColor: tier.color,
+        partners: partnerPersons,
+        isKnotCompleter: false
+      };
+    } else if (KNOT_COMPLETERS_CONFIG.memberIds.includes(person.id)) {
+      const knotPartners = this.persons
+        .filter(p => KNOT_COMPLETERS_CONFIG.memberIds.includes(p.id) && p.id !== person.id)
+        .map(p => ({ id: p.id, name: p.primary_name, slug: p.slug }));
+
+      mathaniMeta = {
+        isMathani: true,
+        isKnotCompleter: true,
+        knotTitle: KNOT_COMPLETERS_CONFIG.title,
+        knotDuty: KNOT_COMPLETERS_CONFIG.description,
+        partners: knotPartners,
+        tierColor: KNOT_COMPLETERS_CONFIG.color
+      };
+    }
+
+    const scholarlyClaims = getPersonClaimsAndEvidence(person.id, person.primary_name, person.short_bio);
+    const shrine = this.getShrineByPersonId(person.id);
+
     return {
       person,
       names,
       books,
       birthPlace,
       deathPlace,
+      shrine,
       school,
       tariqa,
       categories,
       claims,
-      relationships: [...outgoing, ...incoming]
+      scholarlyClaims,
+      relationships: [...outgoing, ...incoming],
+      mathaniMeta
     };
   }
 
@@ -444,7 +502,61 @@ class KnowledgeRepository {
   }
 
   public getPlaces() {
-    return this.places;
+    return this.places.map(p => {
+      const shrinesCount = this.shrines.filter(s => s.place_id === p.id).length;
+      const bornPersonsCount = this.persons.filter(item => item.birth_place_id === p.id).length;
+      const diedPersonsCount = this.persons.filter(item => item.death_place_id === p.id).length;
+      return {
+        ...p,
+        shrinesCount,
+        bornPersonsCount,
+        diedPersonsCount
+      };
+    });
+  }
+
+  public getPlaceDetail(placeId: string) {
+    const place = this.places.find(p => p.id === placeId || p.slug === placeId);
+    if (!place) return null;
+
+    const shrines = this.shrines.filter(s => s.place_id === place.id);
+    const bornPersons = this.persons.filter(p => p.birth_place_id === place.id).map(p => ({
+      id: p.id,
+      name: p.primary_name,
+      slug: p.slug,
+      birthDate: p.birth_date,
+      shortBio: p.short_bio
+    }));
+    const diedPersons = this.persons.filter(p => p.death_place_id === place.id).map(p => ({
+      id: p.id,
+      name: p.primary_name,
+      slug: p.slug,
+      deathDate: p.death_date,
+      shortBio: p.short_bio
+    }));
+
+    return {
+      place,
+      shrines,
+      bornPersons,
+      diedPersons
+    };
+  }
+
+  public getShrines() {
+    return this.shrines;
+  }
+
+  public getShrineByPersonId(personId: string) {
+    return this.shrines.find(s => s.person_id === personId) || null;
+  }
+
+  public getScholarlyJourneys() {
+    return this.scholarlyJourneys;
+  }
+
+  public getHistoricalEras() {
+    return this.historicalEras;
   }
 
   public getClaims() {
@@ -482,6 +594,28 @@ class KnowledgeRepository {
       entity_id: newContrib.id,
       metadata: { payload: input.payload }
     });
+
+    // Mirror to Supabase if connected
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      supabase
+        .from('contributions')
+        .insert({
+          id: newContrib.id,
+          user_id: input.user_id,
+          entity_type: input.entity_type,
+          entity_id: input.entity_id,
+          action: input.action,
+          payload: input.payload,
+          status: 'submitted'
+        })
+        .then(
+          ({ error }: { error: any }) => {
+            if (error) console.warn('[Supabase Sync Warning]: Could not persist contribution', error.message);
+          },
+          () => {}
+        );
+    }
     return newContrib;
   }
 
@@ -516,6 +650,25 @@ class KnowledgeRepository {
       entity_id: contrib.id,
       metadata: { notes: reviewerNotes, previousStatus }
     });
+
+    // Mirror to Supabase if connected
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      supabase
+        .from('contributions')
+        .update({
+          status: 'approved',
+          reviewer_notes: reviewerNotes,
+          reviewed_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .then(
+          ({ error }: { error: any }) => {
+            if (error) console.warn('[Supabase Sync Warning]: Could not update contribution status', error.message);
+          },
+          () => {}
+        );
+    }
 
     return contrib;
   }
@@ -585,6 +738,28 @@ class KnowledgeRepository {
       metadata: { from: data.from_person_id, to: data.to_person_id, type: data.relationship_type_id }
     });
 
+    // Mirror to Supabase if connected
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      supabase
+        .from('relationships')
+        .insert({
+          id: rel.id,
+          from_person_id: data.from_person_id,
+          to_person_id: data.to_person_id,
+          relationship_type_id: data.relationship_type_id,
+          strength: data.strength || 3,
+          notes: data.notes,
+          created_by: actorId
+        })
+        .then(
+          ({ error }: { error: any }) => {
+            if (error) console.warn('[Supabase Sync Warning]: Could not persist relationship', error.message);
+          },
+          () => {}
+        );
+    }
+
     return rel;
   }
 
@@ -631,6 +806,31 @@ class KnowledgeRepository {
       metadata: { name: newPerson.primary_name, slug: newPerson.slug }
     });
 
+    // Mirror to Supabase if connected
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      supabase
+        .from('persons')
+        .insert({
+          id: newPerson.id,
+          slug: newPerson.slug,
+          primary_name: newPerson.primary_name,
+          gender: 'male',
+          birth_date_hijri: data.birth_date,
+          death_date_hijri: data.death_date,
+          primary_school_id: data.school_id,
+          primary_tariqa_id: data.tariqa_id,
+          verification_status: 'verified',
+          created_by: actorId
+        })
+        .then(
+          ({ error }: { error: any }) => {
+            if (error) console.warn('[Supabase Sync Warning]: Could not persist person', error.message);
+          },
+          () => {}
+        );
+    }
+
     return newPerson;
   }
 
@@ -662,6 +862,27 @@ class KnowledgeRepository {
       metadata: entry.metadata || {},
       created_at: new Date().toISOString()
     });
+
+    // Mirror to Supabase if connected (Phase 2 - Persistent Audit Trails)
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      supabase
+        .from('audit_logs')
+        .insert({
+          id: `audit-${Date.now()}`,
+          user_id: entry.user_id,
+          action: entry.action,
+          entity_type: entry.entity_type,
+          entity_id: entry.entity_id,
+          details: entry.metadata || {}
+        })
+        .then(
+          ({ error }: { error: any }) => {
+            if (error) console.warn('[Supabase Sync Warning]: Could not persist audit log', error.message);
+          },
+          () => {}
+        );
+    }
   }
 
   public getStats() {

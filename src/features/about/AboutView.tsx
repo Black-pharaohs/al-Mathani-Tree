@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, Network, Layers, BookOpen, Compass, Sparkles, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, Network, Layers, BookOpen, Compass, Sparkles, CheckCircle2, Database, GitBranch, Terminal } from 'lucide-react';
 
 export const AboutView: React.FC = () => {
   return (
@@ -114,6 +114,69 @@ export const AboutView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* ADR-002: Backend Architecture & Implementation Phase 2 */}
+      <div className="bg-gradient-to-br from-stone-900 to-stone-950 rounded-3xl border border-stone-800 p-8 shadow-xl mt-8 text-stone-100">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-stone-800 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-2xl">
+              <Database className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-700/60 text-[10px] font-mono font-bold">
+                  قرار معماري معتمد: ADR-002
+                </span>
+                <span className="text-xs text-stone-400">البنود 17، 18، 48</span>
+              </div>
+              <h3 className="font-heritage text-xl sm:text-2xl font-bold text-stone-100 mt-1">
+                اعتماد منصة Supabase (PostgreSQL) للبنية التحتية الخلفية
+              </h3>
+            </div>
+          </div>
+          <span className="px-3 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs font-bold self-start sm:self-auto font-heritage">
+            المرحلة الثانية (Phase 2)
+          </span>
+        </div>
+
+        <p className="text-xs sm:text-sm text-stone-300 leading-loose mb-6 font-serif">
+          تم اعتماد منصة <strong>Supabase</strong> مفتوحة المصدر كبنية تحتية موحدة للخدمات الخلفية وقاعدة البيانات، وذلك لتطابقها الكامل مع مخطط البيانات العلائقي (<code className="text-amber-300 font-mono">001_initial_schema.sql</code>)، وقدرتها الأصيلة على تنفيذ الاستعلامات الشجرية العودية (<code className="text-amber-300 font-mono">WITH RECURSIVE</code>) لتتبع سلاسل الأسانيد، بالإضافة إلى حوكمة الأمان المتقدمة على مستوى الصفوف (<code className="text-amber-300 font-mono">Row-Level Security - RLS</code>) ودعم امتدادات اللغة العربية والجغرافيا.
+        </p>
+
+        {/* Phase 2 Sub-steps */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+          <div className="p-3.5 rounded-2xl bg-stone-950/70 border border-stone-800/80 space-y-1">
+            <div className="text-amber-400 font-bold flex items-center gap-1.5 font-heritage">
+              <Terminal className="w-3.5 h-3.5 text-amber-400" />
+              <span>الخطوة 2.1 — المخطط والامتدادات</span>
+            </div>
+            <p className="text-stone-400 leading-relaxed text-[11px]">
+              تطبيق 24 جدولاً علائقياً مع تفعيل امتدادات pg_trgm للبحث العربي وامتداد PostGIS لأطلس المعالم.
+            </p>
+          </div>
+
+          <div className="p-3.5 rounded-2xl bg-stone-950/70 border border-stone-800/80 space-y-1">
+            <div className="text-amber-400 font-bold flex items-center gap-1.5 font-heritage">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span>الخطوة 2.2 — حوكمة الصلاحيات (RLS)</span>
+            </div>
+            <p className="text-stone-400 leading-relaxed text-[11px]">
+              تفعيل أمان الصفوف لعزل المسودات وحصر الاعتماد النهائي للأدلة والمشجرات على المدققين المعتمدين.
+            </p>
+          </div>
+
+          <div className="p-3.5 rounded-2xl bg-stone-950/70 border border-stone-800/80 space-y-1">
+            <div className="text-amber-400 font-bold flex items-center gap-1.5 font-heritage">
+              <GitBranch className="w-3.5 h-3.5 text-amber-400" />
+              <span>الخطوة 2.3 — محول المستودع (Adapter)</span>
+            </div>
+            <p className="text-stone-400 leading-relaxed text-[11px]">
+              ربط SupabaseRepository في خادم Express مع الإبقاء التام على عقود REST API v1 الحالية.
+            </p>
+          </div>
+        </div>
+      </div>
+
 
     </div>
   );

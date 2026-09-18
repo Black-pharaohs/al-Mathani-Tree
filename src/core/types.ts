@@ -404,6 +404,20 @@ export interface ApiResponse<T> {
   };
 }
 
+export interface MathaniMeta {
+  isMathani: boolean;
+  tierNumber?: number;
+  tierTitle?: string;
+  tierShortTitle?: string;
+  tierRealm?: string;
+  tierDuty?: string;
+  tierColor?: string;
+  partners?: Array<{ id: string; name: string; slug: string }>;
+  isKnotCompleter?: boolean;
+  knotTitle?: string;
+  knotDuty?: string;
+}
+
 // Cytoscape Graph DTO
 export interface CytoscapeNodeData {
   id: string;

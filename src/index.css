@@ -9,3 +9,10 @@
     font-family: 'Amiri', serif;
   }
 }
+
+@media print {
+  body {
+    background-color: white !important;
+    color: black !important;
+  }
+}

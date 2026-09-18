@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { GitPullRequest, Send, CheckCircle2, Clock, AlertCircle, Shield, FileText, User } from 'lucide-react';
+import { GitPullRequest, Send, CheckCircle2, Clock, AlertCircle, Shield, FileText, User, Database, ShieldCheck } from 'lucide-react';
 import { Contribution } from '../../core/types';
 import { useAuth } from '../../core/auth/AuthContext';
 
@@ -81,13 +81,28 @@ export const ContributionsView: React.FC = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       
       {/* Header */}
-      <div className="mb-8">
-        <h2 className="font-heritage text-3xl sm:text-4xl font-bold text-stone-900 mb-2">
-          منظومة التحقيق والمساهمات العلمية
-        </h2>
-        <p className="text-stone-600 text-sm max-w-2xl leading-relaxed">
-          تطبيق مبدأ حوكمة المحتوى (Content Governance)؛ حيث لا يتم إدراج أو تعديل أي معلومة علمية بشكل فوري دون مراجعة وتدقيق وإسناد مصدري مع حفظ سجل التعديلات (Revisions).
-        </p>
+      <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="font-heritage text-3xl sm:text-4xl font-bold text-stone-900 mb-2">
+            منظومة التحقيق والمساهمات العلمية
+          </h2>
+          <p className="text-stone-600 text-sm max-w-2xl leading-relaxed font-serif">
+            تطبيق مبدأ حوكمة المحتوى (Content Governance)؛ حيث لا يتم إدراج أو تعديل أي معلومة علمية بشكل فوري دون مراجعة وتدقيق وإسناد مصدري مع حفظ سجل التعديلات (Revisions).
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3 p-3 rounded-2xl bg-stone-900 border border-amber-900/40 text-stone-200 text-xs shadow-sm self-start md:self-auto">
+          <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+            <Database className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="font-bold text-amber-200 font-heritage flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span>حوكمة مدعومة بقواعد RLS</span>
+            </div>
+            <div className="text-[11px] text-stone-400">سجل تدقيق ومراجعات دائم في PostgreSQL</div>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

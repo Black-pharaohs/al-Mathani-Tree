@@ -17,7 +17,10 @@ import {
   Search,
   BookOpen,
   ArrowRight,
-  AlertCircle
+  AlertCircle,
+  Database,
+  Server,
+  ExternalLink
 } from 'lucide-react';
 import { useAuth } from '../../core/auth/AuthContext';
 import { Contribution, Person, RelationshipType, UserRole } from '../../core/types';
@@ -44,7 +47,8 @@ interface UserItem {
 export const AdminDashboardView: React.FC<{ onOpenPerson: (id: string) => void }> = ({ onOpenPerson }) => {
   const { user, token, can, hasRole } = useAuth();
   
-  const [activeTab, setActiveTab] = useState<'moderation' | 'add_person' | 'add_relationship' | 'audit' | 'users'>('moderation');
+  const [activeTab, setActiveTab] = useState<'moderation' | 'add_person' | 'add_relationship' | 'audit' | 'users' | 'backend'>('moderation');
+  const [backendStatus, setBackendStatus] = useState<any>(null);
   
   // Data states
   const [contributions, setContributions] = useState<Contribution[]>([]);
@@ -84,13 +88,15 @@ export const AdminDashboardView: React.FC<{ onOpenPerson: (id: string) => void }
         : Promise.resolve({ success: false, data: [] }),
       hasRole(['admin', 'super_admin'])
         ? fetch('/api/v1/auth/users', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json())
-        : Promise.resolve({ success: false, data: [] })
-    ]).then(([contribRes, persRes, relTypeRes, auditRes, usersRes]) => {
+        : Promise.resolve({ success: false, data: [] }),
+      fetch('/api/v1/system/backend-status').then(r => r.json())
+    ]).then(([contribRes, persRes, relTypeRes, auditRes, usersRes, backendRes]) => {
       if (contribRes.success) setContributions(contribRes.data);
       if (persRes.success) setPersons(persRes.data);
       if (relTypeRes.success) setRelationshipTypes(relTypeRes.data);
       if (auditRes.success) setAuditLogs(auditRes.data);
       if (usersRes.success) setUsersList(usersRes.data);
+      if (backendRes.success) setBackendStatus(backendRes.data);
       setLoading(false);
     }).catch(err => {
       console.error(err);
@@ -323,6 +329,16 @@ export const AdminDashboardView: React.FC<{ onOpenPerson: (id: string) => void }
               <span>المستخدمون والرتب</span>
             </button>
           )}
+
+          <button
+            onClick={() => setActiveTab('backend')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              activeTab === 'backend' ? 'bg-stone-900 text-amber-200 shadow-xs' : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            <Database className="w-3.5 h-3.5 text-emerald-400" />
+            <span>البنية التحتية (Supabase)</span>
+          </button>
         </div>
       </div>
 
@@ -668,6 +684,75 @@ export const AdminDashboardView: React.FC<{ onOpenPerson: (id: string) => void }
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* 6. Backend & Supabase Infrastructure Tab */}
+      {activeTab === 'backend' && (
+        <div className="space-y-6">
+          <div className="bg-gradient-to-br from-stone-900 to-stone-950 rounded-3xl border border-stone-800 p-6 text-stone-100 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-stone-800 mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-2xl">
+                  <Database className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-700/60 text-[10px] font-mono font-bold">
+                      ADR-002: معتمد
+                    </span>
+                    <span className="text-xs text-stone-400">البنية التحتية الخلفية</span>
+                  </div>
+                  <h3 className="font-heritage text-xl font-bold text-stone-100 mt-1">
+                    حالة تكامل Supabase (PostgreSQL) — المرحلة 2
+                  </h3>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
+                  backendStatus?.status === 'CONNECTED'
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                    : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                }`}>
+                  {backendStatus?.status === 'CONNECTED' ? 'متصل بالسحابة (Connected)' : 'وضع المعاينة المهجن (Standalone Mode)'}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div className="p-4 rounded-2xl bg-stone-950/70 border border-stone-800/80">
+                <div className="text-stone-400 text-xs mb-1">المحرك العلائقي</div>
+                <div className="text-stone-100 font-bold text-sm">PostgreSQL 15+</div>
+                <div className="text-[11px] text-emerald-400 mt-1">WITH RECURSIVE مدعوم</div>
+              </div>
+              <div className="p-4 rounded-2xl bg-stone-950/70 border border-stone-800/80">
+                <div className="text-stone-400 text-xs mb-1">مخطط الجداول</div>
+                <div className="text-stone-100 font-bold text-sm">24 جدولاً معتمداً</div>
+                <div className="text-[11px] text-stone-400 mt-1">001_initial_schema.sql</div>
+              </div>
+              <div className="p-4 rounded-2xl bg-stone-950/70 border border-stone-800/80">
+                <div className="text-stone-400 text-xs mb-1">حوكمة الصفوف (RLS)</div>
+                <div className="text-stone-100 font-bold text-sm">مفعلة بالكامل</div>
+                <div className="text-[11px] text-amber-400 mt-1">002_rls_policies.sql</div>
+              </div>
+              <div className="p-4 rounded-2xl bg-stone-950/70 border border-stone-800/80">
+                <div className="text-stone-400 text-xs mb-1">الامتدادات النشطة</div>
+                <div className="text-stone-100 font-bold text-sm">pg_trgm + PostGIS</div>
+                <div className="text-[11px] text-emerald-400 mt-1">البحث العربي والأطلس</div>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-stone-950/80 border border-stone-800 text-xs leading-relaxed text-stone-300 font-serif space-y-2">
+              <div className="font-bold text-amber-300 flex items-center gap-1.5 font-heritage">
+                <Server className="w-4 h-4" />
+                <span>جاهزية التشغيل والربط الفوري:</span>
+              </div>
+              <p>
+                تم إعداد عميل Supabase الرسمي بمطابقة تامة مع نمط <code className="text-amber-300 font-mono">Lazy Initialization</code>، حيث يستمر خادم التطبيق ومستودع المعرفة في العمل بسلاسة سواء في وضع الاختبار دون أخطاء أو عند تزويد متغيرات البيئة (<code className="text-amber-300 font-mono">SUPABASE_URL</code> و <code className="text-amber-300 font-mono">SUPABASE_ANON_KEY</code>) للربط المباشر مع قاعدة بيانات الإنتاج.
+              </p>
+            </div>
           </div>
         </div>
       )}

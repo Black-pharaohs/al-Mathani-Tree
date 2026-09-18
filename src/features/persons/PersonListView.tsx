@@ -4,7 +4,7 @@ import { Person, Category, School, Tariqa } from '../../core/types';
 
 interface PersonListViewProps {
   onOpenPerson: (personId: string) => void;
-  onOpenTree: () => void;
+  onOpenTree: (personId?: string) => void;
 }
 
 export const PersonListView: React.FC<PersonListViewProps> = ({ onOpenPerson, onOpenTree }) => {
@@ -184,9 +184,14 @@ export const PersonListView: React.FC<PersonListViewProps> = ({ onOpenPerson, on
 
               {/* Card Footer Actions */}
               <div className="px-6 py-3.5 bg-stone-50/80 border-t border-stone-100 flex items-center justify-between">
-                <span className="text-[11px] text-stone-500 font-mono">
-                  Slug: {person.slug}
-                </span>
+                <button
+                  onClick={() => onOpenTree(person.id)}
+                  className="flex items-center gap-1.5 text-xs text-stone-600 hover:text-amber-800 transition-colors font-medium"
+                  title="استعراض في الشجرة التفاعلية"
+                >
+                  <Network className="w-3.5 h-3.5 text-amber-600" />
+                  <span>في الشجرة</span>
+                </button>
 
                 <button
                   onClick={() => onOpenPerson(person.id)}

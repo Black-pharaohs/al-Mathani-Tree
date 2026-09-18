@@ -12,12 +12,15 @@ import { SourcesView } from './features/sources/SourcesView';
 import { ContributionsView } from './features/contributions/ContributionsView';
 import { AboutView } from './features/about/AboutView';
 import { AdminDashboardView } from './features/admin/AdminDashboardView';
+import { AtlasView } from './features/atlas/AtlasView';
 import { PersonProfileModal } from './features/persons/PersonProfileModal';
 import { AuthModal } from './features/auth/AuthModal';
 
 function MainApp() {
-  const [currentTab, setCurrentTab] = useState<'trees' | 'persons' | 'sources' | 'contributions' | 'about' | 'admin'>('trees');
+  const [currentTab, setCurrentTab] = useState<'trees' | 'persons' | 'atlas' | 'sources' | 'contributions' | 'about' | 'admin'>('trees');
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
+  const [focusPersonIdInTree, setFocusPersonIdInTree] = useState<string | null>(null);
+  const [selectedPlaceIdInAtlas, setSelectedPlaceIdInAtlas] = useState<string | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const handleOpenPerson = (personIdOrSlug: string) => {
@@ -26,6 +29,20 @@ function MainApp() {
 
   const handleClosePerson = () => {
     setSelectedPersonId(null);
+  };
+
+  const handleOpenInTree = (personId?: string) => {
+    setSelectedPersonId(null);
+    if (personId) {
+      setFocusPersonIdInTree(personId);
+    }
+    setCurrentTab('trees');
+  };
+
+  const handleOpenPlace = (placeId: string) => {
+    setSelectedPersonId(null);
+    setSelectedPlaceIdInAtlas(placeId);
+    setCurrentTab('atlas');
   };
 
   return (
@@ -42,13 +59,24 @@ function MainApp() {
       {/* Main View Area */}
       <main className="flex-1 flex flex-col">
         {currentTab === 'trees' && (
-          <TreeViewer onOpenPerson={handleOpenPerson} />
+          <TreeViewer 
+            onOpenPerson={handleOpenPerson} 
+            initialFocusPersonId={focusPersonIdInTree}
+          />
         )}
 
         {currentTab === 'persons' && (
           <PersonListView 
             onOpenPerson={handleOpenPerson}
-            onOpenTree={() => setCurrentTab('trees')}
+            onOpenTree={handleOpenInTree}
+          />
+        )}
+
+        {currentTab === 'atlas' && (
+          <AtlasView
+            onOpenPerson={handleOpenPerson}
+            onOpenTree={handleOpenInTree}
+            initialSelectedPlaceId={selectedPlaceIdInAtlas}
           />
         )}
 
@@ -75,6 +103,8 @@ function MainApp() {
           personIdOrSlug={selectedPersonId}
           onClose={handleClosePerson}
           onSelectPerson={handleOpenPerson}
+          onOpenInTree={handleOpenInTree}
+          onOpenPlace={handleOpenPlace}
         />
       )}
 

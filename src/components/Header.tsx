@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Network, Users, BookOpen, GitPullRequest, Info, Sparkles, CheckCircle2, Shield, LogIn, LogOut, KeyRound } from 'lucide-react';
+import { Search, Network, Users, BookOpen, GitPullRequest, Info, Sparkles, CheckCircle2, Shield, LogIn, LogOut, KeyRound, Compass, MapPin } from 'lucide-react';
 import { normalizeArabicText } from '../core/utils/arabic';
-import { Person, Book, Source } from '../core/types';
+import { Person, Book, Source, Place } from '../core/types';
 import { useAuth } from '../core/auth/AuthContext';
 
 interface HeaderProps {
-  currentTab: 'trees' | 'persons' | 'sources' | 'contributions' | 'about' | 'admin';
-  onSelectTab: (tab: 'trees' | 'persons' | 'sources' | 'contributions' | 'about' | 'admin') => void;
+  currentTab: 'trees' | 'persons' | 'atlas' | 'sources' | 'contributions' | 'about' | 'admin';
+  onSelectTab: (tab: 'trees' | 'persons' | 'atlas' | 'sources' | 'contributions' | 'about' | 'admin') => void;
   onSelectPerson: (personIdOrSlug: string) => void;
   onOpenAuth: () => void;
 }
@@ -18,13 +18,14 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, onSelectTab, onSelec
     persons: Person[];
     books: Book[];
     sources: Source[];
-  }>({ persons: [], books: [], sources: [] });
+    places: Place[];
+  }>({ persons: [], books: [], sources: [], places: [] });
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!searchQuery.trim()) {
-      setSearchResults({ persons: [], books: [], sources: [] });
+      setSearchResults({ persons: [], books: [], sources: [], places: [] });
       setIsDropdownOpen(false);
       return;
     }
@@ -147,6 +148,28 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, onSelectTab, onSelec
                     ))}
                   </div>
                 )}
+
+                {searchResults.places && searchResults.places.length > 0 && (
+                  <div className="p-2 border-t border-stone-800">
+                    <div className="text-[11px] font-semibold text-emerald-400/80 px-2 py-1 mb-1 flex items-center gap-1">
+                      <MapPin className="w-3 h-3 text-emerald-400" />
+                      <span>الحواضر والمعالم الجغرافية</span>
+                    </div>
+                    {searchResults.places.map((pl) => (
+                      <div
+                        key={pl.id}
+                        onClick={() => {
+                          onSelectTab('atlas');
+                          setIsDropdownOpen(false);
+                        }}
+                        className="p-2 rounded-lg hover:bg-stone-800 cursor-pointer text-xs text-stone-300 flex items-center justify-between"
+                      >
+                        <span className="font-semibold text-emerald-200">{pl.name}</span>
+                        <span className="text-[11px] text-stone-400 font-sans">{pl.city ? `${pl.city}، ` : ''}{pl.country}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -175,6 +198,19 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, onSelectTab, onSelec
             >
               <Users className="w-4 h-4" />
               <span>الأعلام</span>
+            </button>
+
+            <button
+              onClick={() => onSelectTab('atlas')}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+                currentTab === 'atlas'
+                  ? 'bg-amber-600 text-amber-50 shadow-sm'
+                  : 'text-stone-300 hover:bg-stone-800 hover:text-stone-100'
+              }`}
+              title="أطلس المعالم والمراقد والمسارات التاريخية (البند 48)"
+            >
+              <Compass className="w-4 h-4" />
+              <span>أطلس المراقد</span>
             </button>
 
             <button

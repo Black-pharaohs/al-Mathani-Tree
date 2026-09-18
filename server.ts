@@ -16,6 +16,7 @@ import {
   AuthenticatedRequest
 } from './src/server/auth';
 import { UserRole } from './src/core/types';
+import { getSupabaseConfigStatus } from './src/server/supabase';
 
 async function startServer() {
   const app = express();
@@ -35,6 +36,26 @@ async function startServer() {
         timestamp: new Date().toISOString(),
         version: '1.0.0',
         environment: process.env.NODE_ENV || 'development'
+      }
+    });
+  });
+
+  // Backend Infrastructure Status (ADR-002: Supabase Integration)
+  app.get('/api/v1/system/backend-status', (req, res) => {
+    const supabaseStatus = getSupabaseConfigStatus();
+    res.json({
+      success: true,
+      data: {
+        provider: 'Supabase (PostgreSQL)',
+        adr: 'ADR-002-SUPABASE-BACKEND',
+        phase: 'Phase 2: Cloud Persistence & Collaborative Governance',
+        status: supabaseStatus.isConfigured ? 'CONNECTED' : 'STANDALONE_HYBRID',
+        supabase: supabaseStatus,
+        schema: {
+          tablesCount: 24,
+          migrationFile: '001_initial_schema.sql',
+          features: ['pg_trgm', 'postgis', 'row_level_security', 'recursive_queries']
+        }
       }
     });
   });
@@ -257,11 +278,46 @@ async function startServer() {
     });
   });
 
-  // Places
+  // Places & Shrines (Section 48)
   app.get('/api/v1/places', (req, res) => {
     res.json({
       success: true,
       data: repository.getPlaces()
+    });
+  });
+
+  app.get('/api/v1/places/:id', (req, res) => {
+    const detail = repository.getPlaceDetail(req.params.id);
+    if (!detail) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'المكان غير موجود' }
+      });
+    }
+    res.json({
+      success: true,
+      data: detail
+    });
+  });
+
+  app.get('/api/v1/shrines', (req, res) => {
+    res.json({
+      success: true,
+      data: repository.getShrines()
+    });
+  });
+
+  app.get('/api/v1/journeys', (req, res) => {
+    res.json({
+      success: true,
+      data: repository.getScholarlyJourneys()
+    });
+  });
+
+  app.get('/api/v1/eras', (req, res) => {
+    res.json({
+      success: true,
+      data: repository.getHistoricalEras()
     });
   });
 
