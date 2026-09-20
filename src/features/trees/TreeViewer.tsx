@@ -18,7 +18,8 @@ import {
   Sparkles,
   X,
   ArrowLeft,
-  Check
+  Check,
+  Radio
 } from 'lucide-react';
 import { Tree, GraphPayload, CytoscapeNodeData } from '../../core/types';
 
@@ -41,6 +42,7 @@ export const TreeViewer: React.FC<TreeViewerProps> = ({
   const [depth, setDepth] = useState<number>(2);
   const [layoutMode, setLayoutMode] = useState<LayoutType>('preset');
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLiveSyncActive, setIsLiveSyncActive] = useState<boolean>(true);
   const [selectedNodeData, setSelectedNodeData] = useState<CytoscapeNodeData | null>(null);
   const [graphMeta, setGraphMeta] = useState<{ nodesCount: number; edgesCount: number }>({ nodesCount: 0, edgesCount: 0 });
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -655,6 +657,19 @@ export const TreeViewer: React.FC<TreeViewerProps> = ({
             >
               العنقودي
             </button>
+          </div>
+
+          {/* Realtime Live Sync Badge */}
+          <div 
+            onClick={() => loadGraph()}
+            title="اشتراك متصل لتحديث شبكة العلاقات لحظياً (Supabase Realtime) - انقر لإعادة المزامنة"
+            className="hidden lg:flex items-center gap-1.5 bg-stone-900/90 backdrop-blur-md px-2.5 py-1.5 rounded-2xl border border-emerald-500/30 text-[11px] text-emerald-400 font-mono shadow-xl cursor-pointer hover:bg-stone-800 transition-colors"
+          >
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span className="font-heritage text-xs font-semibold">بث العلاقات المباشر</span>
           </div>
         </div>
 

@@ -1,6 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { GitPullRequest, Send, CheckCircle2, Clock, AlertCircle, Shield, FileText, User, Database, ShieldCheck } from 'lucide-react';
-import { Contribution } from '../../core/types';
+import { 
+  GitPullRequest, 
+  Send, 
+  CheckCircle2, 
+  Clock, 
+  AlertCircle, 
+  Shield, 
+  FileText, 
+  User, 
+  Database, 
+  ShieldCheck,
+  MessageSquare,
+  ThumbsUp,
+  ThumbsDown,
+  HelpCircle,
+  CornerDownLeft,
+  BookOpen
+} from 'lucide-react';
+import { Contribution, PeerReviewComment } from '../../core/types';
 import { useAuth } from '../../core/auth/AuthContext';
 
 export const ContributionsView: React.FC = () => {
@@ -9,6 +26,12 @@ export const ContributionsView: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [successMessage, setSuccessMessage] = useState<string>('');
+
+  // Peer Review Comment State
+  const [replyingContribId, setReplyingContribId] = useState<string | null>(null);
+  const [commentText, setCommentText] = useState<string>('');
+  const [commentVerdict, setCommentVerdict] = useState<'support' | 'dispute' | 'inquiry'>('support');
+  const [isSubmittingComment, setIsSubmittingComment] = useState<boolean>(false);
 
   // Form State
   const [contributorName, setContributorName] = useState<string>(user?.name || '');
@@ -74,6 +97,36 @@ export const ContributionsView: React.FC = () => {
       console.error('Submission failed:', err);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleAddComment = async (contribId: string) => {
+    if (!commentText.trim() || !token) return;
+
+    setIsSubmittingComment(true);
+    try {
+      const res = await fetch(`/api/v1/contributions/${contribId}/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          content: commentText.trim(),
+          verdict: commentVerdict
+        })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setCommentText('');
+        setReplyingContribId(null);
+        loadContributions();
+      }
+    } catch (err) {
+      console.error('Failed to post peer review comment:', err);
+    } finally {
+      setIsSubmittingComment(false);
     }
   };
 
@@ -156,9 +209,151 @@ export const ContributionsView: React.FC = () => {
                         : String(c.payload)}
                     </div>
 
-                    <div className="text-[10px] text-stone-400 font-mono">
-                      تاريخ التقديم: {new Date(c.created_at).toLocaleDateString('ar-EG')}
+                    <div className="text-[10px] text-stone-400 font-mono flex items-center justify-between">
+                      <span>تاريخ التقديم: {new Date(c.created_at).toLocaleDateString('ar-EG')}</span>
+                      <button
+                        onClick={() => setReplyingContribId(replyingContribId === c.id ? null : c.id)}
+                        className="text-xs text-amber-700 hover:text-amber-800 font-heritage font-bold flex items-center gap-1 transition-colors"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        <span>مناقشة الأقران والتدقيق ({c.comments?.length || 0})</span>
+                      </button>
                     </div>
+
+                    {/* Peer Review Comments Thread */}
+                    {c.comments && c.comments.length > 0 && (
+                      <div className="mt-2 pt-3 border-t border-stone-200/60 space-y-2">
+                        <div className="text-[11px] font-bold text-stone-600 flex items-center gap-1">
+                          <BookOpen className="w-3 h-3 text-amber-600" />
+                          <span>الاستدراكات والآراء العلمية المسجلة:</span>
+                        </div>
+                        {c.comments.map((cm) => (
+                          <div key={cm.id} className="p-2.5 rounded-xl bg-white border border-stone-200/80 text-xs">
+                            <div className="flex items-center justify-between mb-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold text-stone-800 text-[11px]">{cm.author_name}</span>
+                                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-md bg-stone-100 text-stone-600 border border-stone-200">
+                                  {cm.author_role}
+                                </span>
+                              </div>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 ${
+                                cm.verdict === 'support'
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                  : cm.verdict === 'dispute'
+                                  ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                  : 'bg-amber-50 text-amber-700 border border-amber-200'
+                              }`}>
+                                {cm.verdict === 'support' ? (
+                                  <>
+                                    <ThumbsUp className="w-2.5 h-2.5" />
+                                    <span>مؤيّد ومثبت</span>
+                                  </>
+                                ) : cm.verdict === 'dispute' ? (
+                                  <>
+                                    <ThumbsDown className="w-2.5 h-2.5" />
+                                    <span>استدراك / خلاف</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <HelpCircle className="w-2.5 h-2.5" />
+                                    <span>استيضاح توثيقي</span>
+                                  </>
+                                )}
+                              </span>
+                            </div>
+                            <p className="text-stone-700 leading-relaxed font-serif text-[11px]">
+                              {cm.content}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Peer Review Form Box */}
+                    {replyingContribId === c.id && (
+                      <div className="mt-3 p-3 rounded-2xl bg-amber-50/60 border border-amber-200 animate-fade-in space-y-3">
+                        <div className="flex items-center justify-between text-xs text-amber-900 font-bold">
+                          <span className="flex items-center gap-1.5">
+                            <CornerDownLeft className="w-3.5 h-3.5" />
+                            <span>إضافة رأي أو تدقيق علمي تشاركي</span>
+                          </span>
+                          {!user && (
+                            <span className="text-[10px] text-rose-600 font-normal">
+                              (يتطلب تسجيل الدخول كمحقق أو باحث)
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] text-stone-600">الموقف العلمي:</span>
+                          <div className="flex items-center gap-1.5 text-xs">
+                            <button
+                              type="button"
+                              onClick={() => setCommentVerdict('support')}
+                              className={`px-2.5 py-1 rounded-lg text-xs flex items-center gap-1 transition-all ${
+                                commentVerdict === 'support'
+                                  ? 'bg-emerald-600 text-white font-bold'
+                                  : 'bg-white text-stone-600 border border-stone-200'
+                              }`}
+                            >
+                              <ThumbsUp className="w-3 h-3" />
+                              <span>تأييد</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setCommentVerdict('dispute')}
+                              className={`px-2.5 py-1 rounded-lg text-xs flex items-center gap-1 transition-all ${
+                                commentVerdict === 'dispute'
+                                  ? 'bg-rose-600 text-white font-bold'
+                                  : 'bg-white text-stone-600 border border-stone-200'
+                              }`}
+                            >
+                              <ThumbsDown className="w-3 h-3" />
+                              <span>استدراك</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setCommentVerdict('inquiry')}
+                              className={`px-2.5 py-1 rounded-lg text-xs flex items-center gap-1 transition-all ${
+                                commentVerdict === 'inquiry'
+                                  ? 'bg-amber-600 text-white font-bold'
+                                  : 'bg-white text-stone-600 border border-stone-200'
+                              }`}
+                            >
+                              <HelpCircle className="w-3 h-3" />
+                              <span>استيضاح</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        <textarea
+                          rows={2}
+                          value={commentText}
+                          onChange={(e) => setCommentText(e.target.value)}
+                          placeholder="أدخل دليلك التوثيقي، السند، أو المرجع المعتمد..."
+                          disabled={!user}
+                          className="w-full bg-white border border-amber-200 rounded-xl p-2.5 text-xs text-stone-800 placeholder-stone-400 focus:outline-none focus:border-amber-500 leading-relaxed disabled:opacity-60"
+                        />
+
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setReplyingContribId(null)}
+                            className="px-3 py-1.5 text-xs text-stone-500 hover:text-stone-700"
+                          >
+                            إلغاء
+                          </button>
+                          <button
+                            type="button"
+                            disabled={!user || isSubmittingComment || !commentText.trim()}
+                            onClick={() => handleAddComment(c.id)}
+                            className="bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-stone-950 font-bold px-4 py-1.5 rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-xs"
+                          >
+                            {isSubmittingComment ? 'جارٍ النشر...' : 'نشر الرأي العلمي'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

@@ -279,6 +279,9 @@ export interface Source {
   source_type: SourceType;
   description?: string;
   verification_status: VerificationStatus;
+  manuscript_image_url?: string;
+  storage_path?: string;
+  archive_reference?: string;
 }
 
 export interface Citation {
@@ -360,6 +363,18 @@ export interface Contribution {
   review_notes?: string;
   created_at: string;
   reviewed_at?: string;
+  comments?: PeerReviewComment[];
+}
+
+export interface PeerReviewComment {
+  id: string;
+  contribution_id: string;
+  author_id: string;
+  author_name: string;
+  author_role: UserRole;
+  content: string;
+  verdict?: 'support' | 'dispute' | 'inquiry';
+  created_at: string;
 }
 
 export interface Revision {

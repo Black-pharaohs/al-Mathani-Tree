@@ -398,6 +398,33 @@ async function startServer() {
     }
   });
 
+  // Peer Review Comment (Scientific Debate & Evidence Verification)
+  app.post('/api/v1/contributions/:id/comments', requireAuth, (req: AuthenticatedRequest, res) => {
+    try {
+      const { content, verdict } = req.body;
+      if (!content || !content.trim()) {
+        res.status(400).json({
+          success: false,
+          error: { message: 'يجب كتابة نص التعليق أو الاستدراك العلمي' }
+        });
+        return;
+      }
+
+      const comment = repository.addContributionComment({
+        contributionId: req.params.id,
+        authorId: req.user!.id,
+        authorName: req.user!.name,
+        authorRole: req.user!.role,
+        content: content.trim(),
+        verdict: verdict || 'inquiry'
+      });
+
+      res.status(201).json({ success: true, data: comment });
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: { message: err.message } });
+    }
+  });
+
   // Relationship Types
   app.get('/api/v1/relationship-types', (req, res) => {
     res.json({

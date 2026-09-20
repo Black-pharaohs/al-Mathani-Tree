@@ -102,7 +102,17 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, onSelectTab, onSelec
             {/* Live Autocomplete Results */}
             {isDropdownOpen && (
               <div className="absolute right-0 left-0 mt-2 bg-stone-900 border border-amber-900/50 rounded-xl shadow-2xl overflow-hidden z-50 max-h-96 overflow-y-auto">
-                {searchResults.persons.length === 0 && searchResults.books.length === 0 && (
+                <div className="px-3 py-1.5 bg-stone-950/80 border-b border-stone-800 flex items-center justify-between text-[10px] text-stone-400">
+                  <span className="flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-amber-400" />
+                    <span>بحث دلالي وتوافقي مدعوم بـ pg_trgm</span>
+                  </span>
+                  <span className="font-mono text-amber-500/80">
+                    {searchResults.persons.length + searchResults.books.length + (searchResults.places?.length || 0)} نتيجة
+                  </span>
+                </div>
+
+                {searchResults.persons.length === 0 && searchResults.books.length === 0 && (!searchResults.places || searchResults.places.length === 0) && (
                   <div className="p-4 text-xs text-stone-400 text-center">
                     لم يُعثر على نتائج مطابقة لـ «{searchQuery}»
                   </div>

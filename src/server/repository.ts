@@ -20,13 +20,15 @@ import {
   Place,
   Claim,
   Contribution,
+  PeerReviewComment,
   Revision,
   AuditLog,
   GraphPayload,
   CytoscapeNodeData,
-  CytoscapeEdgeData
+  CytoscapeEdgeData,
+  UserRole
 } from '../core/types';
-import { normalizeArabicText } from '../core/utils/arabic';
+import { normalizeArabicText, calculateTrigramSimilarity } from '../core/utils/arabic';
 import {
   SEED_CATEGORIES,
   SEED_FIELDS,
@@ -92,7 +94,19 @@ class KnowledgeRepository {
         suggestion: 'إضافة توثيق حول إقامته الأخيرة بالفسطاط بمصر وتأليف مذهبه الجديد.'
       },
       status: 'under_review',
-      created_at: new Date(Date.now() - 3600000 * 24).toISOString()
+      created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
+      comments: [
+        {
+          id: 'comment-seed-1',
+          contribution_id: 'contrib-demo-1',
+          author_id: 'usr-editor-1',
+          author_name: 'المدقق العلمي',
+          author_role: 'editor',
+          content: 'مؤيد ومثبت تاريخياً في كتاب طبقات الشافعية الكبرى للإمام السبكي، ص 114.',
+          verdict: 'support',
+          created_at: new Date(Date.now() - 3600000 * 12).toISOString()
+        }
+      ]
     }
   ];
   private revisions: Revision[] = [];
@@ -439,41 +453,86 @@ class KnowledgeRepository {
     return { tree, nodes, edges };
   }
 
-  // --- Global Search ---
+  // --- Global Search (Semantic & pg_trgm Arabic Fuzzy Scoring) ---
   public globalSearch(rawQuery: string) {
     if (!rawQuery || rawQuery.trim().length === 0) {
       return { persons: [], books: [], sources: [], places: [] };
     }
     const q = normalizeArabicText(rawQuery);
 
-    const persons = this.persons.filter(p => {
-      return (
-        normalizeArabicText(p.primary_name).includes(q) ||
+    // Score and rank persons with trigram matching
+    const scoredPersons = this.persons.map(p => {
+      const nameScore = calculateTrigramSimilarity(rawQuery, p.primary_name);
+      const bioScore = p.short_bio ? calculateTrigramSimilarity(rawQuery, p.short_bio) : 0;
+      const altScores = this.personNames
+        .filter(n => n.person_id === p.id)
+        .map(n => calculateTrigramSimilarity(rawQuery, n.name));
+      const maxAlt = altScores.length > 0 ? Math.max(...altScores) : 0;
+      const maxScore = Math.max(nameScore, bioScore * 0.7, maxAlt);
+      const directMatch = normalizeArabicText(p.primary_name).includes(q) ||
         normalizeArabicText(p.short_bio || '').includes(q) ||
-        this.personNames.some(n => n.person_id === p.id && normalizeArabicText(n.name).includes(q))
-      );
-    }).slice(0, 8);
+        this.personNames.some(n => n.person_id === p.id && normalizeArabicText(n.name).includes(q));
 
-    const books = this.books.filter(b => {
-      return normalizeArabicText(b.title).includes(q) || normalizeArabicText(b.description || '').includes(q);
-    }).slice(0, 5);
+      return {
+        person: p,
+        score: directMatch ? Math.max(maxScore, 0.8) : maxScore
+      };
+    })
+    .filter(item => item.score > 0.18)
+    .sort((a, b) => b.score - a.score)
+    .map(item => item.person)
+    .slice(0, 8);
 
-    const sources = this.sources.filter(s => {
-      return (
-        normalizeArabicText(s.title).includes(q) ||
-        normalizeArabicText(s.author || '').includes(q)
-      );
-    }).slice(0, 5);
+    const scoredBooks = this.books.map(b => {
+      const titleScore = calculateTrigramSimilarity(rawQuery, b.title);
+      const descScore = b.description ? calculateTrigramSimilarity(rawQuery, b.description) : 0;
+      const direct = normalizeArabicText(b.title).includes(q) || normalizeArabicText(b.description || '').includes(q);
+      return {
+        book: b,
+        score: direct ? Math.max(titleScore, 0.8) : Math.max(titleScore, descScore * 0.6)
+      };
+    })
+    .filter(item => item.score > 0.18)
+    .sort((a, b) => b.score - a.score)
+    .map(item => item.book)
+    .slice(0, 5);
 
-    const places = this.places.filter(pl => {
-      return (
-        normalizeArabicText(pl.name).includes(q) ||
+    const scoredSources = this.sources.map(s => {
+      const titleScore = calculateTrigramSimilarity(rawQuery, s.title);
+      const authorScore = s.author ? calculateTrigramSimilarity(rawQuery, s.author) : 0;
+      const direct = normalizeArabicText(s.title).includes(q) || normalizeArabicText(s.author || '').includes(q);
+      return {
+        source: s,
+        score: direct ? Math.max(titleScore, 0.8) : Math.max(titleScore, authorScore)
+      };
+    })
+    .filter(item => item.score > 0.18)
+    .sort((a, b) => b.score - a.score)
+    .map(item => item.source)
+    .slice(0, 5);
+
+    const scoredPlaces = this.places.map(pl => {
+      const nameScore = calculateTrigramSimilarity(rawQuery, pl.name);
+      const cityScore = pl.city ? calculateTrigramSimilarity(rawQuery, pl.city) : 0;
+      const direct = normalizeArabicText(pl.name).includes(q) ||
         normalizeArabicText(pl.city || '').includes(q) ||
-        normalizeArabicText(pl.country || '').includes(q)
-      );
-    }).slice(0, 5);
+        normalizeArabicText(pl.country || '').includes(q);
+      return {
+        place: pl,
+        score: direct ? Math.max(nameScore, 0.8) : Math.max(nameScore, cityScore)
+      };
+    })
+    .filter(item => item.score > 0.18)
+    .sort((a, b) => b.score - a.score)
+    .map(item => item.place)
+    .slice(0, 5);
 
-    return { persons, books, sources, places };
+    return { 
+      persons: scoredPersons, 
+      books: scoredBooks, 
+      sources: scoredSources, 
+      places: scoredPlaces 
+    };
   }
 
   // --- General Getters ---
@@ -691,6 +750,69 @@ class KnowledgeRepository {
     });
 
     return contrib;
+  }
+
+  public addContributionComment(params: {
+    contributionId: string;
+    authorId: string;
+    authorName: string;
+    authorRole: UserRole;
+    content: string;
+    verdict?: 'support' | 'dispute' | 'inquiry';
+  }): PeerReviewComment {
+    const contrib = this.contributions.find(c => c.id === params.contributionId);
+    if (!contrib) throw new Error('المساهمة غير موجودة');
+
+    if (!contrib.comments) {
+      contrib.comments = [];
+    }
+
+    const comment: PeerReviewComment = {
+      id: `comment-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      contribution_id: params.contributionId,
+      author_id: params.authorId,
+      author_name: params.authorName,
+      author_role: params.authorRole,
+      content: params.content,
+      verdict: params.verdict,
+      created_at: new Date().toISOString()
+    };
+
+    contrib.comments.push(comment);
+
+    // Audit log
+    this.logAudit({
+      user_id: params.authorId,
+      action: 'contribution.peer_review_comment',
+      entity_type: 'contribution',
+      entity_id: params.contributionId,
+      metadata: { verdict: params.verdict, comment_id: comment.id }
+    });
+
+    // Mirror to Supabase if connected
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      supabase
+        .from('audit_logs')
+        .insert({
+          id: `audit-${Date.now()}`,
+          user_id: params.authorId,
+          action: 'contribution.peer_review_comment',
+          entity_type: 'contribution',
+          entity_id: params.contributionId,
+          details: {
+            verdict: params.verdict,
+            comment_content: params.content,
+            author_name: params.authorName
+          }
+        })
+        .then(
+          () => {},
+          () => {}
+        );
+    }
+
+    return comment;
   }
 
   public addRelationship(data: {

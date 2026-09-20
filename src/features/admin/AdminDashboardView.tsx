@@ -20,7 +20,12 @@ import {
   AlertCircle,
   Database,
   Server,
-  ExternalLink
+  ExternalLink,
+  HardDrive,
+  Image as ImageIcon,
+  MessageSquare,
+  ThumbsUp,
+  ThumbsDown
 } from 'lucide-react';
 import { useAuth } from '../../core/auth/AuthContext';
 import { Contribution, Person, RelationshipType, UserRole } from '../../core/types';
@@ -398,6 +403,29 @@ export const AdminDashboardView: React.FC<{ onOpenPerson: (id: string) => void }
                         ملاحظة المحقق: {c.reviewer_notes}
                       </div>
                     )}
+
+                    {/* Peer Review Summary Badge */}
+                    {c.comments && c.comments.length > 0 && (
+                      <div className="mt-2 p-2.5 rounded-xl bg-amber-50/80 border border-amber-200/70 text-xs">
+                        <div className="font-bold text-amber-900 flex items-center gap-1.5 mb-1 text-[11px]">
+                          <MessageSquare className="w-3.5 h-3.5 text-amber-700" />
+                          <span>آراء ومناقشات المحققين والأقران ({c.comments.length}):</span>
+                        </div>
+                        <div className="space-y-1">
+                          {c.comments.map((cm) => (
+                            <div key={cm.id} className="text-[11px] text-stone-700 flex items-center justify-between">
+                              <span><strong>{cm.author_name} ({cm.author_role}):</strong> {cm.content}</span>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                                cm.verdict === 'support' ? 'bg-emerald-100 text-emerald-800' :
+                                cm.verdict === 'dispute' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'
+                              }`}>
+                                {cm.verdict === 'support' ? 'مؤيّد' : cm.verdict === 'dispute' ? 'استدراك' : 'استيضاح'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {can('contribution.approve') && c.status !== 'approved' && c.status !== 'rejected' && (
@@ -738,9 +766,9 @@ export const AdminDashboardView: React.FC<{ onOpenPerson: (id: string) => void }
                 <div className="text-[11px] text-amber-400 mt-1">002_rls_policies.sql</div>
               </div>
               <div className="p-4 rounded-2xl bg-stone-950/70 border border-stone-800/80">
-                <div className="text-stone-400 text-xs mb-1">الامتدادات النشطة</div>
-                <div className="text-stone-100 font-bold text-sm">pg_trgm + PostGIS</div>
-                <div className="text-[11px] text-emerald-400 mt-1">البحث العربي والأطلس</div>
+                <div className="text-stone-400 text-xs mb-1">خزانة المخطوطات (Storage)</div>
+                <div className="text-stone-100 font-bold text-sm">Supabase Storage</div>
+                <div className="text-[11px] text-emerald-400 mt-1">Bucket: manuscripts (جاهز)</div>
               </div>
             </div>
 
